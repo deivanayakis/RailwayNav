@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Buildings with OSMBuildings</title>
+    <style>
+        html, body, #map {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .control-buttons {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .control-buttons button {
+            margin: 5px;
+        }
+    </style>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- OSMBuildings CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/osmbuildings/dist/OSMBuildings.css" />
+</head>
+<body>
+
+    <div id="map"></div>
+    <div class="control-buttons">
+        <button id="toggle3D">Switch to 3D</button>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- OSMBuildings JS -->
+    <script src="https://unpkg.com/osmbuildings/dist/OSMBuildings.js"></script>
+    <script>
+        // Initialize the Leaflet map
+        var map = L.map('map').setView([51.505, -0.09], 16);
+
+        // Add a Tile Layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Initialize OSMBuildings
+        var osmb = new OSMBuildings(map).load();
+
+        // 3D Toggle Button
+        document.getElementById('toggle3D').onclick = function () {
+            if (osmb.getStyle().opacity === 0) {
+                osmb.setStyle({ opacity: 1 });
+                this.textContent = 'Switch to 2D';
+            } else {
+                osmb.setStyle({ opacity: 0 });
+                this.textContent = 'Switch to 3D';
+            }
+        };
+
+        // Optional: Center the map on a specific location
+        map.setView([51.505, -0.09], 16);
+
+    </script>
+</body>
+</html>

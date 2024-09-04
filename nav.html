@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map with Route Finding</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        #map {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <button onclick="findBestRoute()">Find Best Route</button>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        var map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -2,
+            maxZoom: 4,
+            zoomControl: true
+        }).setView([0, 0], 0);
+
+        // Define the bounds for the image overlay
+        var bounds = [[0, 0], [1000, 1500]]; // Adjust these values to fit your image
+
+        // Add the image overlay to the map
+        var image = L.imageOverlay('floorplan.jpg', bounds).addTo(map);
+        map.fitBounds(bounds);
+
+        // Add a marker to debug the image alignment
+        L.marker([500, 750], {icon: L.icon({iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png'})})
+            .addTo(map)
+            .bindPopup('Debug Marker');
+
+        // Function to build the graph from routes
+        function buildGraphFromRoutes(routesData) {
+            let graph = {};
+            routesData.features.forEach(feature => {
+                let coords = feature.geometry.coordinates.flat();
+                for (let i = 0; i < coords.length - 2; i += 2) {
+                    let start = [coords[i], coords[i + 1]].toString();
+                    let end = [coords[i + 2], coords[i + 3]].toString();
+                    if (!graph[start]) graph[start] = {};
+                    if (!graph[end]) graph[end] = {};
+                    graph[start][end] = 1; // Assuming weight of 1 for simplicity
+                    graph[end][start] = 1; // Assuming weight of 1 for simplicity
+                }
+            });
+            return graph;
+        }
+
+        // Dijkstra's algorithm to find the shortest path
+        function dijkstra(graph, start, end) {
+            let distances = {};
+            let prev = {};
+            let nodes = new PriorityQueue();
+
+            for (let node in graph) {
+                if (node === start) {
+                    distances[node] = 0;
+                    nodes.enqueue(node, 0);
+                } else {
+                    distances[node] = Infinity;
+                    nodes.enqueue(node, Infinity);
+                }
+                prev[node] = null;
+            }
+
+            while (!nodes.isEmpty()) {
+                let smallest = nodes.dequeue();
+                if (smallest === end) {
+                    let path = [];
+                    while (prev[smallest]) {
+                        path.push(smallest);
+                        smallest = prev[smallest];
+                    }
+                    path.push(start); // Add the start node
+                    return path.reverse();
+                }
+
+                if (!smallest || distances[smallest] === Infinity) {
+                    break;
+                }
+
+                for (let neighbor in graph[smallest]) {
+                    let alt = distances[smallest] + graph[smallest][neighbor];
+                    if (alt < distances[neighbor]) {
+                        distances[neighbor] = alt;
+                        prev[neighbor] = smallest;
+                        nodes.enqueue(neighbor, alt);
+                    }
+                }
+            }
+            return [];
+        }
+
+        // Function to draw the route on the map
+        function drawRoute(route) {
+            let latlngs = route.map(point => {
+                let coords = point.split(',').map(Number);
+                return L.latLng(coords[1], coords[0]);
+            });
+            L.polyline(latlngs, {color: 'blue'}).addTo(map);
+        }
+
+        // Function to find the best route between source and destination
+        function findBestRoute() {
+            if (!sourceMarker || !destMarker || !routesData) return;
+
+            let sourceCoords = sourceMarker.getLatLng();
+            let destCoords = destMarker.getLatLng();
+            let graph = buildGraphFromRoutes(routesData);
+
+            let sourceKey = formatCoordinates([sourceCoords.lng, sourceCoords.lat]);
+            let destKey = formatCoordinates([destCoords.lng, destCoords.lat]);
+
+            let bestRoute = dijkstra(graph, sourceKey, destKey);
+
+            if (bestRoute.length > 0) {
+                drawRoute(bestRoute);
+            } else {
+                alert('No route found!');
+            }
+        }
+
+        // Helper function to format coordinates
+        function formatCoordinates(coords) {
+            return coords.toString();
+        }
+
+        // Load the GeoJSON data for markers
+        let sourceMarker, destMarker;
+        let routesData;
+        fetch('Markers.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    pointToLayer: function(feature, latlng) {
+                        let marker = L.marker(latlng);
+                        marker.bindPopup(feature.properties.name);
+                        if (feature.properties.type === 'source') {
+                            sourceMarker = marker;
+                        } else if (feature.properties.type === 'destination') {
+                            destMarker = marker;
+                        }
+                        return marker;
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.error('Error loading GeoJSON:', error));
+
+        // Load the GeoJSON data for routes
+        fetch('Routes.geojson')
+            .then(response => response.json())
+            .then(data => {
+                routesData = data;
+            })
+            .catch(error => console.error('Error loading GeoJSON:', error));
+    </script>
+</body>
+</html>

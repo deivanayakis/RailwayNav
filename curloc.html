@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSM Map with GeoJSON Markers</title>
+    <link rel="stylesheet" href="dist/leaflet.css" />
+    <link rel="stylesheet" href="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.css" />
+    <style>
+        body { margin: 0; }
+        #map { height: 90vh; }
+        #locationButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            padding: 10px;
+            background-color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #saveButton {
+            position: absolute;
+            top: 10px;
+            left: 160px;
+            z-index: 1000;
+            padding: 10px;
+            background-color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <button id="locationButton">Add Current Location Marker</button>
+    <button id="saveButton">Save Markers as GeoJSON</button>
+    <div id="map"></div>
+
+    <!-- Include Leaflet and plugins -->
+    <script src="dist/leaflet.js"></script>
+    <script src="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.js"></script>
+
+    <script>
+        // Initialize the map and set the view to focus on India
+        const map = L.map('map').setView([20.5937, 78.9629], 7);
+
+        // Add base tile layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Add search control
+        const geocoder = L.Control.Geocoder.nominatim();
+        L.Control.geocoder({
+            geocoder: geocoder
+        }).addTo(map);
+
+        // Array to hold all markers and GeoJSON features
+        const markers = [];
+        let geoJsonFeatures = [];
+
+        // Function to handle location found
+        function onLocationFound(e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+
+            // Create a new marker
+            const marker = L.marker(e.latlng, {
+                icon: L.icon({
+                    iconUrl: 'map.png', // Replace with your custom marker icon URL
+                    iconSize: [32, 32], // Size of the icon
+                    iconAnchor: [16, 32], // Point of the icon which will correspond to marker's location
+                    popupAnchor: [0, -32] // Point from which the popup should open relative to the iconAnchor
+                })
+            }).addTo(map)
+              .bindPopup(`Latitude: ${lat}, Longitude: ${lng}`).openPopup();
+            
+            // Store the marker in the array
+            markers.push(marker);
+
+            // Add the marker's position to GeoJSON features
+            geoJsonFeatures.push({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [parseFloat(lng), parseFloat(lat)]
+                },
+                "properties": {
+                    "popupContent": `Latitude: ${lat}, Longitude: ${lng}`
+                }
+            });
+        }
+
+        function onLocationError(e) {
+            alert(e.message);
+        }
+
+        // Event listener for the button to add the marker
+        document.getElementById('locationButton').addEventListener('click', function() {
+            map.locate({ setView: true, maxZoom: 16 });
+            map.on('locationfound', onLocationFound);
+            map.on('locationerror', onLocationError);
+        });
+
+        // Event listener for saving markers as GeoJSON
+        document.getElementById('saveButton').addEventListener('click', function() {
+            const geoJson = {
+                "type": "FeatureCollection",
+                "features": geoJsonFeatures
+            };
+
+            // Convert GeoJSON object to a string
+            const geoJsonString = JSON.stringify(geoJson);
+
+            // Save GeoJSON to a file (you can replace this part with an API call or localStorage)
+            const blob = new Blob([geoJsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+
+            // Create a download link and trigger the download
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "markers.geojson";
+            link.click();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+        });
+
+    </script>
+</body>
+</html>

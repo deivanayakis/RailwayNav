@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map with GeoJSON</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        #map {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        var map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -2,
+            maxZoom: 4,
+            zoomControl: true
+        }).setView([0, 0], 0);
+
+        // Define the bounds for the image overlay
+        var bounds = [[0, 0], [1000, 1500]]; // Adjust these values to fit your image
+
+        // Add the image overlay to the map (your floor plan image)
+        var image = L.imageOverlay('floorplan.png', bounds).addTo(map);
+        map.fitBounds(bounds);
+
+        // Function to load GeoJSON data
+        function loadGeoJSON(url, styleFn, pointToLayerFn, onEachFeatureFn) {
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    L.geoJSON(data, {
+                        style: styleFn,
+                        pointToLayer: pointToLayerFn,
+                        onEachFeature: onEachFeatureFn
+                    }).addTo(map);
+                })
+                .catch(error => console.error('Error loading GeoJSON:', error));
+        }
+
+        // Load and add the GeoJSON data for markers
+        loadGeoJSON('Markers.geojson', null, function(feature, latlng) {
+            return L.marker(latlng);
+        }, function(feature, layer) {
+            if (feature.properties && feature.properties.name) {
+                layer.bindPopup(feature.properties.name);
+            }
+        });
+
+        // Load and add the GeoJSON data for routes
+        loadGeoJSON('Routes.geojson', function(feature) {
+            return {color: 'blue', weight: 5}; // Customize the style for your routes
+        }, null, function(feature, layer) {
+            if (feature.properties && feature.properties.name) {
+                layer.bindPopup(feature.properties.name);
+            }
+        });
+    </script>
+</body>
+</html>

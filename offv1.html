@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Officer Website</title>
+    <link rel="stylesheet" href="dist/leaflet.css" />
+    <link rel="stylesheet" href="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.css" />
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px;
+            background-color: #061d84b0;
+            z-index: 1000;
+            border-bottom: 1px solid #ddd;
+        }
+        #title {
+            font-size: 20px;
+            font-weight: bold;
+            color: aliceblue;
+        }
+        #buttons-container {
+            display: flex;
+        }
+        .button {
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.872);
+            font-weight: bold;
+            color: #061d84e7;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        #map {
+            flex-grow: 1;
+            position: relative;
+        }
+        #saveButton {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 10px;
+            background-color: #061d84e7;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .popup-content {
+            font-size: 16px;
+            text-align: center;
+        }
+        .popup-content p {
+            margin: 0;
+            padding: 0 0 10px;
+        }
+        .popup-content button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .popup-content button:hover {
+            background-color: #0056b3;
+        }
+
+        .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1000; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgb(0,0,0); /* Fallback color */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    }
+
+    /* Modal content */
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto; /* 15% from the top and centered */
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%; /* Could be more or less, depending on screen size */
+    }
+
+    /* The Close Button */
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    /* Buttons */
+    .modal-button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 10px;
+    }
+
+    .modal-button-yes {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .modal-button-no {
+        background-color: #ccc;
+        color: black;
+    }
+
+    </style>
+</head>
+<body>
+    <div id="header">
+        <div id="title">Tirunelveli Railway Station</div>
+        <div id="buttons-container">
+            <button class="button" id="addFacilityButton">Add Facility</button>
+        </div>
+    </div>
+
+    <!-- Map div -->
+    <div id="map"></div>
+
+    <!-- Save button at the bottom center -->
+    <button id="saveButton">Save</button>
+
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p>Is the facility closed?</p>
+            <button id="modalYes" class="modal-button modal-button-yes">Yes</button>
+            <button id="modalNo" class="modal-button modal-button-no">No</button>
+        </div>
+    </div>
+
+    <!-- Include Leaflet and plugins -->
+    <script src="dist/leaflet.js"></script>
+    <script src="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.js"></script>
+
+    <script>
+    const markerData = new Map();
+       
+        const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+        // Add base tile layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 22,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const satelliteLayer = L.tileLayer('https://{s}.sat.earthdata.nasa.gov/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; NASA'
+        });
+
+        const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+        });
+
+        // Create an overlay layer group for facilities
+        const facilityLayerGroup = L.layerGroup().addTo(map);
+
+        // Add search control
+        const geocoder = L.Control.Geocoder.nominatim();
+        L.Control.geocoder({
+            geocoder: geocoder
+        }).addTo(map);
+
+        // Define base maps and overlay maps
+        const baseMaps = {
+            "OpenStreetMap": osmLayer,
+            "Satellite": satelliteLayer,
+            "Terrain": terrainLayer
+        };
+
+        const overlayMaps = {
+            "Facilities": facilityLayerGroup
+        };
+
+        // Add layer control to the map
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+        });
+
+        const facilityIcons = {
+            "Ticket Counter": 'icons/ticketcounter.png',
+            "Water Tank": 'icons/watertank.png',
+            "ATM": 'icons/atm.png',
+            "Waiting Hall": 'icons/waitinghall.png',
+            "Rest Room": 'icons/restroom.png',
+            "Entry": 'icons/entry.png',
+            "Escalator": 'icons/escalator.png',
+            "Exit": 'icons/exit.png',
+            "Food Court": 'icons/foodcourt.png',
+            "Help Desk": 'icons/helpdesk.png',
+            "Parcel Office": 'icons/parceloffice.png',
+            "Store": 'icons/store.png'
+        };
+
+        // Function to show the facility input popup
+        function showFacilityPopup(e) {
+            // Create popup content with facility name
+            const popupContent = `
+                <div class="popup-content">
+                    <p>Select Facility type:</p>
+                    <select id="facilityType">
+                        <option value="Ticket Counter">Ticket Counter</option>
+                        <option value="Water Tank">Water Tank</option>
+                        <option value="ATM">ATM</option>
+                        <option value="Waiting Hall">Waiting Hall</option>
+                        <option value="Rest Room">Rest Room</option>
+                        <option value="Entry">Entry</option>
+                        <option value="Exit">Exit</option>
+                        <option value="Escalator">Escalator</option>
+                        <option value="Food Court">Food Court</option>
+                        <option value="Parcel Office">Parcel Office</option>
+                        <option value="Store">Store</option>
+                        <option value="Help Desk">Help Desk</option>
+                    </select><br>
+                    <button id="submitFacility">Ok</button>
+                </div>
+            `;
+
+            // Create and bind the popup
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent(popupContent)
+                .openOn(map);
+
+            // Create a marker at the clicked location
+            const marker = L.marker(e.latlng).addTo(facilityLayerGroup);
+
+            // Event listener for the Add button
+            document.getElementById('submitFacility').addEventListener('click', function() {
+                const facilityType = document.getElementById('facilityType').value;
+                const iconUrl = facilityIcons[facilityType] || 'icons/map.png';
+
+                marker.setIcon(L.icon({
+                    iconUrl: iconUrl,
+                    iconSize: [50, 50],
+                    iconAnchor: [16, 32],
+                    popupAnchor: [0, -32]
+                }));
+                
+                marker.bindPopup(`<strong>${facilityType}</strong>`).openPopup();
+
+                // Show the marker name and the "Update" and "Delete" buttons
+                marker.on('click', function() {
+
+                    const storedFacilityType = markerData.get(marker) || facilityType;
+
+
+                    const markerPopupContent = `
+                        <div class="popup-content">
+                            <p><strong>${storedFacilityType}</strong></p>
+                            <button id="updateFacility">Update</button>
+                            <button id="deleteFacility">Delete</button>
+                        </div>
+                    `;
+                    marker.bindPopup(markerPopupContent).openPopup();
+                });
+
+                // Hide the popup that is showing the "Add" button
+                map.closePopup();
+            });
+        }
+
+        // Function to handle adding a facility
+        document.getElementById('addFacilityButton').addEventListener('click', function() {
+            map.locate({ setView: true, maxZoom: 16 });
+            map.once('locationfound', function(e) {
+                showFacilityPopup(e);
+            });
+        });
+
+
+        function showConfirmationModal(callback) {
+        const modal = document.getElementById('confirmationModal');
+        const btnYes = document.getElementById('modalYes');
+        const btnNo = document.getElementById('modalNo');
+        const span = document.getElementsByClassName('close')[0];
+
+        modal.style.display = 'block';
+
+        btnYes.onclick = function() {
+            modal.style.display = 'none';
+            callback(true); // Pass true if "Yes"
+        };
+
+        btnNo.onclick = function() {
+            modal.style.display = 'none';
+            callback(false); // Pass false if "No"
+        };
+
+        span.onclick = function() {
+            modal.style.display = 'none';
+        };
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
+    }
+
+        // Event listener for the Update and Delete buttons
+        map.on('popupopen', function(e) {
+            const popup = e.popup;
+            const updateButton = popup.getElement().querySelector('#updateFacility');
+            const deleteButton = popup.getElement().querySelector('#deleteFacility');
+
+            if (updateButton) {
+                updateButton.addEventListener('click', function() {
+        showConfirmationModal(function(isClosed) {
+            const marker = popup._source;
+                const currentContent = marker.getPopup().getContent();
+
+                // Extract current facility type
+                const currentFacilityTypeMatch = currentContent.match(/<strong>([^<]+)<\/strong>/);
+                const currentFacilityType = currentFacilityTypeMatch ? currentFacilityTypeMatch[1] : '';
+                
+            if (isClosed) {
+                // Update facility type with "(Closed)"
+                const updatedText = `${currentFacilityType} (Closed)`;
+
+                // Store the updated facility type in markerData so it persists
+                markerData.set(marker, updatedText);
+
+                // Update the popup content permanently
+                marker.bindPopup(`<div class="popup-content">
+                    <p><strong>${updatedText}</strong></p>
+                    <button id="updateFacility">Update</button>
+                    <button id="deleteFacility">Delete</button>
+                </div>`);
+
+                // Close the popup after updating
+                map.closePopup();
+            }
+            else{
+                const updatedText=currentFacilityType.replace(/\s*\(Closed\)$/, '');
+                markerData.set(marker, updatedText);
+
+                // Update the popup content permanently
+                marker.bindPopup(`<div class="popup-content">
+                    <p><strong>${updatedText}</strong></p>
+                    <button id="updateFacility">Update</button>
+                    <button id="deleteFacility">Delete</button>
+                </div>`);
+
+                // Close the popup after updating
+                map.closePopup();
+            }
+        });
+    });
+        }
+
+
+            if (deleteButton) {
+                deleteButton.addEventListener('click', function() {
+                    if (popup._source) {
+                        facilityLayerGroup.removeLayer(popup._source);
+                        map.closePopup(); // Close the popup
+                    }
+                });
+            }
+        });
+
+        // Save button functionality
+        document.getElementById('saveButton').addEventListener('click', function() {
+            alert("Save functionality to be implemented.");
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+"type": "FeatureCollection",
+"name": "Markers",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": 1, "name": "dustbin" }, "geometry": { "type": "Point", "coordinates": [ 394.3, -198.623076923076894 ] } },
+{ "type": "Feature", "properties": { "id": 2, "name": "steps" }, "geometry": { "type": "Point", "coordinates": [ 956.938461538461524, -496.661538461538385 ] } },
+{ "type": "Feature", "properties": { "id": 3, "name": "car parking" }, "geometry": { "type": "Point", "coordinates": [ 961.299999999999841, -143.376923076923049 ] } },
+{ "type": "Feature", "properties": { "id": 4, "name": "garden" }, "geometry": { "type": "Point", "coordinates": [ 1112.5, -173.907692307692287 ] } },
+{ "type": "Feature", "properties": { "id": 5, "name": "sofa" }, "geometry": { "type": "Point", "coordinates": [ 514.969230769230762, -290.215384615384608 ] } },
+{ "type": "Feature", "properties": { "id": 6, "name": "tv" }, "geometry": { "type": "Point", "coordinates": [ 750.492307692307691, -434.146153846153823 ] } },
+{ "type": "Feature", "properties": { "id": 7, "name": "pooja room" }, "geometry": { "type": "Point", "coordinates": [ 280.9, -533.007692307692309 ] } },
+{ "type": "Feature", "properties": { "id": 8, "name": "exit" }, "geometry": { "type": "Point", "coordinates": [ 843.538461538461434, -345.461538461538453 ] } },
+{ "type": "Feature", "properties": { "id": 9, "name": "visitor hall" }, "geometry": { "type": "Point", "coordinates": [ 794.107692307692218, -95.4 ] } },
+{ "type": "Feature", "properties": { "id": 10, "name": "guest room" }, "geometry": { "type": "Point", "coordinates": [ 584.753846153846098, -108.484615384615381 ] } },
+{ "type": "Feature", "properties": { "id": 11, "name": "store room" }, "geometry": { "type": "Point", "coordinates": [ 168.953846153846115, -544.638461538461456 ] } },
+{ "type": "Feature", "properties": { "id": 12, "name": "dining room" }, "geometry": { "type": "Point", "coordinates": [ 520.784615384615336, -596.976923076923072 ] } },
+{ "type": "Feature", "properties": { "id": 13, "name": "kitchen" }, "geometry": { "type": "Point", "coordinates": [ 738.86153846153843, -527.192307692307622 ] } },
+{ "type": "Feature", "properties": { "id": 14, "name": "portico" }, "geometry": { "type": "Point", "coordinates": [ 1035.44615384615372, -360.0 ] } },
+{ "type": "Feature", "properties": { "id": 15, "name": "restroom" }, "geometry": { "type": "Point", "coordinates": [ 168.953846153846115, -182.630769230769204 ] } },
+{ "type": "Feature", "properties": { "id": 16, "name": "restroom" }, "geometry": { "type": "Point", "coordinates": [ 394.3, -61.961538461538453 ] } }
+]
+}

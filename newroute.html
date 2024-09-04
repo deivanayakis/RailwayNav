@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet Walk Path with GeoJSON Save</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="dist/leaflet.css" />
+    <style>
+        #map { height: 90vh; }
+        #controls { margin: 20px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="controls">
+        <button id="finishButton">Finish Drawing</button>
+        <button id="saveButton" disabled>Save Route as GeoJSON</button>
+    </div>
+    <script src="dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        var map = L.map('map').fitWorld();
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Store the user's path coordinates
+        var latlngs = [];
+        var polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
+        var lastLatLng = null;
+
+        // Function to calculate the distance between two points (in meters)
+        function calculateDistance(latlng1, latlng2) {
+            var R = 6371000; // Radius of the Earth in meters
+            var dLat = (latlng2[0] - latlng1[0]) * Math.PI / 180;
+            var dLng = (latlng2[1] - latlng1[1]) * Math.PI / 180;
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(latlng1[0] * Math.PI / 180) * Math.cos(latlng2[0] * Math.PI / 180) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Enable location tracking and draw the path
+        map.locate({ setView: true, watch: true, maxZoom: 16, enableHighAccuracy: true });
+
+        map.on('locationfound', function(e) {
+            var latlng = [e.latitude, e.longitude];
+
+            // Add the initial location to the path
+            if (latlngs.length === 0) {
+                latlngs.push(latlng);
+                polyline.setLatLngs(latlngs);
+            }
+
+            // Store only when moved at least 0.5 meters
+            if (!lastLatLng || calculateDistance(lastLatLng, latlng) >= 0.5) {
+                latlngs.push(latlng);
+                polyline.setLatLngs(latlngs); // Update the polyline with new latlngs
+                lastLatLng = latlng; // Update last saved location
+            }
+
+            // Ensure the polyline is visible by updating the map view if needed
+            map.setView(latlng, map.getZoom());
+        });
+
+        map.on('locationerror', function() {
+            alert("Location access denied.");
+        });
+
+        // Finish drawing the path
+        document.getElementById('finishButton').onclick = function() {
+            map.stopLocate(); // Stop tracking the location
+            document.getElementById('saveButton').disabled = false; // Enable the save button
+            alert("Drawing finished.");
+        };
+
+        // Save the route as GeoJSON
+        document.getElementById('saveButton').onclick = function() {
+            var geojson = polyline.toGeoJSON();
+            var blob = new Blob([JSON.stringify(geojson)], {type: "application/json"});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'route.geojson';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+    </script>
+</body>
+</html>

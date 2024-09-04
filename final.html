@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSM Map with Search and Multiple Layers</title>
+    <link rel="stylesheet" href="dist/leaflet.css" />
+    <link rel="stylesheet" href="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.css" />
+    <style>
+        body { margin: 0; }
+        #map { height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Include Leaflet and plugins -->
+    <script src="dist/leaflet.js"></script>
+    <script src="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.js"></script>
+
+    <script>
+        // Initialize the map and set the view with an extended zoom level
+        const map = L.map('map').setView([20.5937, 78.9629], 5); // Initial zoom level set to 7
+
+        // Add base tile layers with extended zoom capabilities
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 22, // Increase max zoom level
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        const satelliteLayer = L.tileLayer('https://{s}.sat.earthdata.nasa.gov/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; NASA'
+        });
+
+        const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+        });
+
+        // Add the default OSM tile layer to the map
+        osmLayer.addTo(map);
+
+        // Add search control
+        const geocoder = L.Control.Geocoder.nominatim();
+        L.Control.geocoder({
+            geocoder: geocoder
+        }).addTo(map);
+
+        // Define base maps and overlay maps
+        const baseMaps = {
+            "OpenStreetMap": osmLayer,
+            "Satellite": satelliteLayer,
+            "Terrain": terrainLayer
+        };
+
+        const overlayMaps = {
+            // Add additional overlay layers here
+        };
+
+        // Add layer control to the map
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+        });
+    </script>
+</body>
+</html>

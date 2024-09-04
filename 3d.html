@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSM Map with 3D Buildings and Roads</title>
+    <link rel="stylesheet" href="dist/leaflet.css" />
+    <link rel="stylesheet" href="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.css" />
+    <style>
+        body { margin: 0; }
+        #map, #map3d { height: 100vh; }
+        .controls { position: absolute; top: 10px; left: 10px; z-index: 1000; }
+        .controls button { margin: 5px; }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button id="switchTo2D">Switch to 2D</button>
+        <button id="switchTo3D">Switch to 3D</button>
+    </div>
+    <div id="map"></div>
+    <div id="map3d" style="display: none;"></div>
+
+    <!-- Include Leaflet -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.js"></script>
+
+    <!-- Include Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/OrbitControls.js"></script>
+
+    <script>
+        // Initialize Leaflet map
+        const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+        // Add base tile layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Add search control
+        const geocoder = L.Control.Geocoder.nominatim();
+        L.Control.geocoder({
+            geocoder: geocoder
+        }).addTo(map);
+
+        // Define base maps and overlay maps
+        const baseMaps = {
+            "OpenStreetMap": osmLayer
+        };
+
+        const overlayMaps = {};
+
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('map3d').appendChild(renderer.domElement);
+
+        // Add orbit controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        // Load GeoJSON data for buildings
+        const loader = new THREE.FileLoader();
+        loader.load('path/to/your/buildings.geojson', function (data) {
+            const geojson = JSON.parse(data);
+            geojson.features.forEach(feature => {
+                if (feature.geometry.type === 'Polygon') {
+                    const coordinates = feature.geometry.coordinates[0];
+                    const height = feature.properties.height || 10;
+                    const geometry = new THREE.ExtrudeGeometry(new THREE.Shape(coordinates.map(coord => new THREE.Vector2(coord[0], coord[1]))), { depth: height, bevelEnabled: false });
+                    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                    const building = new THREE.Mesh(geometry, material);
+                    scene.add(building);
+                }
+            });
+        });
+
+        // Load road data similarly if available
+
+        camera.position.z = 500;
+        camera.position.y = 100;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Function to switch to 2D view
+        function show2D() {
+            document.getElementById('map').style.display = 'block';
+            document.getElementById('map3d').style.display = 'none';
+        }
+
+        // Function to switch to 3D view
+        function show3D() {
+            document.getElementById('map').style.display = 'none';
+            document.getElementById('map3d').style.display = 'block';
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        }
+
+        // Button event listeners
+        document.getElementById('switchTo2D').addEventListener('click', show2D);
+        document.getElementById('switchTo3D').addEventListener('click', show3D);
+
+        // Default view
+        show2D();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            map.invalidateSize();
+        });
+    </script>
+</body>
+</html>

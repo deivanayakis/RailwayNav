@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyline with Intermediate Points</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+    <style>
+        body { margin: 0; }
+        #map { height: 90vh; }
+        #coords {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 80vh;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="coords">Coordinates will be displayed here.</div>
+    <div id="map"></div>
+
+    <!-- Include Leaflet and Leaflet Draw from CDN -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+    <script>
+        // Initialize the map and set the view
+        const map = L.map('map').setView([8.7283, 77.7081], 16); // Coordinates for Tirunelveli Railway Station
+
+        // Base tile layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Layer groups for drawn items
+        const drawnItems = new L.FeatureGroup().addTo(map);
+
+        // Initialize the draw control
+        const drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems // Only the drawn items can be edited
+            }
+        }).addTo(map);
+
+        // Function to insert intermediate points
+        function addIntermediatePoints(latlngs, interval) {
+            const newLatLngs = [];
+            for (let i = 0; i < latlngs.length - 1; i++) {
+                const start = latlngs[i];
+                const end = latlngs[i + 1];
+                newLatLngs.push(start);
+                const segmentLength = map.distance(start, end);
+                const numIntervals = Math.floor(segmentLength / interval);
+                for (let j = 1; j <= numIntervals; j++) {
+                    const intermediateLatLng = L.latLng(
+                        start.lat + (end.lat - start.lat) * (j * interval / segmentLength),
+                        start.lng + (end.lng - start.lng) * (j * interval / segmentLength)
+                    );
+                    newLatLngs.push(intermediateLatLng);
+                }
+            }
+            newLatLngs.push(latlngs[latlngs.length - 1]);
+            return newLatLngs;
+        }
+
+        // Handle drawing events
+        map.on(L.Draw.Event.CREATED, function (e) {
+            const layer = e.layer;
+            drawnItems.addLayer(layer);
+
+            if (e.layerType === 'polyline') {
+                // Extract all coordinates of the polyline
+                const latlngs = layer.getLatLngs();
+                const interval = 1; // Interval in meters
+                const newLatLngs = addIntermediatePoints(latlngs, interval);
+
+                let coordsText = 'Polyline Coordinates (with 1m intervals):\n';
+                
+                newLatLngs.forEach(latlng => {
+                    coordsText += `Lat: ${latlng.lat}, Lng: ${latlng.lng}\n`;
+                });
+
+                // Display coordinates in the div
+                document.getElementById('coords').innerText = coordsText;
+            }
+        });
+
+        // Optional: Handle editing
+        map.on(L.Draw.Event.EDITED, function (e) {
+            const layers = e.layers;
+            layers.eachLayer(function (layer) {
+                if (layer instanceof L.Polyline) {
+                    // Extract updated coordinates
+                    const latlngs = layer.getLatLngs();
+                    const interval = 1; // Interval in meters
+                    const newLatLngs = addIntermediatePoints(latlngs, interval);
+
+                    let coordsText = 'Updated Polyline Coordinates (with 1m intervals):\n';
+                    
+                    newLatLngs.forEach(latlng => {
+                        coordsText += `Lat: ${latlng.lat}, Lng: ${latlng.lng}\n`;
+                    });
+
+                    // Display updated coordinates
+                    document.getElementById('coords').innerText = coordsText;
+                }
+            });
+        });
+
+        // Optional: Handle deletion
+        map.on(L.Draw.Event.DELETED, function (e) {
+            document.getElementById('coords').innerText = 'Polyline deleted.';
+        });
+    </script>
+</body>
+</html>
