@@ -210,6 +210,7 @@
         });
 
         const facilityLayerGroup = L.layerGroup().addTo(map);
+        var routeLayerGroup = L.layerGroup().addTo(map);
 
         streetLayer.addTo(map);
 
@@ -220,7 +221,8 @@
         };
 
         const overlayMaps = {
-            "Facilities": facilityLayerGroup
+            "Facilities": facilityLayerGroup,
+            "Routes":routeLayerGroup
         };
 
         L.control.layers(baseMaps, overlayMaps).addTo(map);
@@ -387,39 +389,58 @@
         });
 
         function markersToGeoJSON() {
-            const features = [];
+        const features = [];
 
-            facilityLayerGroup.eachLayer(function(layer) {
-                const facilityType = markerData.get(layer) || layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)[1];
+        // Add facility markers
+        facilityLayerGroup.eachLayer(function(layer) {
+            const facilityType = markerData.get(layer) || layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)[1];
+            features.push({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [layer.getLatLng().lng, layer.getLatLng().lat]
+                },
+                properties: {
+                    facilityType: facilityType
+                }
+            });
+        });
+
+        // Add route polylines
+        routeLayerGroup.eachLayer(function(layer) {
+            if (layer instanceof L.Polyline) {
                 features.push({
                     type: "Feature",
                     geometry: {
-                        type: "Point",
-                        coordinates: [layer.getLatLng().lng, layer.getLatLng().lat]
+                        type: "LineString",
+                        coordinates: layer.getLatLngs().map(latlng => [latlng.lng, latlng.lat])
                     },
                     properties: {
-                        facilityType: facilityType
+                        type: "Route"
                     }
                 });
-            });
-            return {
-                type: "FeatureCollection",
-                features: features
-            };
-        }
+            }
+        });
 
-        function downloadGeoJSON() {
-            const geojson = markersToGeoJSON();
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "facilities.geojson");
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-        }
+        return {
+            type: "FeatureCollection",
+            features: features
+        };
+    }
 
-        document.getElementById('saveButton').addEventListener('click', downloadGeoJSON);
+    // Function to download the GeoJSON file
+    function downloadGeoJSON() {
+        const geojson = markersToGeoJSON();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "map_data.geojson");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    document.getElementById('saveButton').addEventListener('click', downloadGeoJSON);
 
         //Routes
 
@@ -427,9 +448,9 @@
         finishButton.style.display='none';
 
         var latlngs = [];
-        var polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
+        var polyline = L.polyline(latlngs, { color: 'blue' }).addTo(routeLayerGroup);
         var lastLatLng = null;
-        var routeLayerGroup = L.layerGroup().addTo(map);
+        
 
         document.getElementById('addRoutesButton').addEventListener('click', function() {
             map.locate({ setView: true, maxZoom: 20 });
