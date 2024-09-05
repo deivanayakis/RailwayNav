@@ -192,7 +192,9 @@
 
     <script>
         const markerData = new Map();
-        const map = L.map('map').setView([20.5937, 78.9629], 5);
+        const map = L.map('map');
+
+        
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 22,
@@ -208,6 +210,10 @@
                 maxZoom: 22,
                 subdomains:['mt0','mt1','mt2','mt3']
         });
+
+        streetLayer.addTo(map);
+
+        map.locate({setView: true, maxZoom: 22});
 
         const facilityLayerGroup = L.layerGroup().addTo(map);
         var routeLayerGroup = L.layerGroup().addTo(map);
